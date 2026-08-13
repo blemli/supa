@@ -36,8 +36,11 @@ const RadioGroupCardItem = React.forwardRef<
         'border',
         'p-2',
         // 'hover:bg-selection',
+        // Selected matches interactive hover so programmatic selection is visible.
+        // control-surface-tokens will swap these to border-control-hover.
         'hover:border-foreground-muted',
-        'hover:z-1 focus-visible:z-1',
+        'hover:z-1 focus-visible:z-1 focus-visible:border-foreground-muted',
+        'data-[state=checked]:border-foreground-muted',
         'outline-hidden',
         'transition-colors',
         'group',
