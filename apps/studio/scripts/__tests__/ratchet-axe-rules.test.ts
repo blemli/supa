@@ -10,6 +10,8 @@ const scriptArgvPlaceholder = path.resolve(studioRoot, 'scripts', 'ratchet-axe-r
 
 const ALL_RULES = ['color-contrast', 'region']
 
+const SCAN_THEME = 'light'
+
 const tempDirs: string[] = []
 
 afterEach(() => {
@@ -182,6 +184,45 @@ describe('ratchet-axe-rules integration', () => {
     expect(metadata.ruleRoutes['color-contrast']).toEqual({ '/project/default': 2 })
   })
 
+  it('records the scanned theme in the baseline', () => {
+    const metadataPath = path.join(createTempDir(), 'baseline.json')
+
+    const scans = buildScans([{ surface: '/project/default', rules: { 'color-contrast': 1 } }])
+
+    expect(
+      invokeRatchet(['--metadata', metadataPath, '--rule', 'color-contrast', '--init'], scans)
+    ).toBe(0)
+
+    expect(JSON.parse(readFileSync(metadataPath, 'utf8')).theme).toBe(SCAN_THEME)
+  })
+
+  it('errors when the scan theme differs from the baseline theme', () => {
+    const metadataPath = path.join(createTempDir(), 'baseline.json')
+
+    writeBaseline(metadataPath, { theme: 'light', rules: { 'color-contrast': 0 } })
+
+    const scans = buildScans([{ surface: '/project/default', rules: {}, theme: 'dark' }])
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(invokeRatchet(['--metadata', metadataPath, '--rule', 'color-contrast'], scans)).toBe(2)
+    expect(collectCalls(errorSpy)).toContain('captured in "light"')
+  })
+
+  it('errors when scan units rendered in more than one theme', () => {
+    const metadataPath = path.join(createTempDir(), 'baseline.json')
+
+    writeBaseline(metadataPath, { theme: 'light', rules: { 'color-contrast': 0 } })
+
+    const scans = buildScans([
+      { surface: '/project/default', rules: {}, theme: 'light' },
+      { surface: '/project/default/sql', rules: {}, theme: 'dark' },
+    ])
+
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(invokeRatchet(['--metadata', metadataPath, '--rule', 'color-contrast'], scans)).toBe(2)
+    expect(collectCalls(errorSpy)).toContain('more than one theme')
+  })
+
   it('renders an improvement delta with a single minus sign', () => {
     const metadataPath = path.join(createTempDir(), 'baseline.json')
     const summaryPath = path.join(createTempDir(), 'summary.md')
@@ -202,13 +243,19 @@ describe('ratchet-axe-rules integration', () => {
 })
 
 function buildScans(
-  units: Array<{ surface: string; rules: Record<string, number>; scannedRules?: string[] }>
+  units: Array<{
+    surface: string
+    rules: Record<string, number>
+    scannedRules?: string[]
+    theme?: string
+  }>
 ) {
-  return units.map(({ surface, rules, scannedRules }) => ({
+  return units.map(({ surface, rules, scannedRules, theme }) => ({
     surface,
     loaded: true,
     elementCount: 500,
     scannedRules: scannedRules ?? ALL_RULES,
+    theme: theme ?? SCAN_THEME,
     violations: Object.entries(rules).map(([id, count]) => ({
       id,
       nodes: Array.from({ length: count }, () => ({ target: [id] })),

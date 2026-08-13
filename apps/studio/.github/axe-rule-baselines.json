@@ -1,4 +1,5 @@
 {
+  "theme": "light",
   "rules": {
     "aria-required-children": 8,
     "aria-required-parent": 36,

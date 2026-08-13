@@ -9,11 +9,13 @@ import {
   HEADER_SELECTOR,
   MAIN_SELECTOR,
   RATCHETED_RULES,
+  SCAN_THEME,
   scanLooksEmpty,
   scanRoute,
   scanShellRegion,
   settleForAxe,
   SIDEBAR_SELECTOR,
+  THEME_STORAGE_KEY,
   unloadedResult,
   violationIds,
   writeArtifact,
@@ -121,6 +123,14 @@ async function reportScan(testInfo: TestInfo, result: AxeArtifact, scope: string
     )
   }
 
+  // Not an accessibility finding, so it fails the spec even in warn mode: a scan
+  // in the wrong theme produces numbers the baseline cannot be compared against.
+  expect(
+    result.theme,
+    `${result.surface} rendered in the "${result.theme}" theme, but the scan pins "${SCAN_THEME}". ` +
+      'Contrast counts are theme-specific, so this run cannot be compared to the baseline.'
+  ).toBe(SCAN_THEME)
+
   const blocking = blockingViolations(result)
   expect(
     violationIds(blocking),
@@ -132,6 +142,17 @@ test.describe('Studio accessibility scan', () => {
   // Serial keeps the seed and its cleanup on one worker, and keeps the artifact
   // set identical from run to run.
   test.describe.configure({ mode: 'serial' })
+
+  // Emulation alone is not enough: Studio reads its own stored preference first
+  // and only falls back to `prefers-color-scheme`. Pin both so they agree.
+  test.use({ colorScheme: SCAN_THEME })
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(({ key, theme }) => localStorage.setItem(key, theme), {
+      key: THEME_STORAGE_KEY,
+      theme: SCAN_THEME,
+    })
+  })
 
   test.beforeAll(async () => {
     await seedScannableContent()

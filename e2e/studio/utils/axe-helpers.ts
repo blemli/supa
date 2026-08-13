@@ -13,6 +13,18 @@ import {
   type A11yScanResult,
 } from '../../shared/a11y.ts'
 
+// Studio's ThemeProvider defaults to `system`, so with nothing pinned the
+// rendered theme follows the runner's `prefers-color-scheme`. `color-contrast`
+// findings are theme-specific, so the scan pins one and records what rendered.
+// Dark is unscanned. Measured identical for `color-contrast` today, but that is
+// a fact about today, not a guarantee.
+export const SCAN_THEME = 'light'
+
+// next-themes is configured to write the resolved theme here, not to a class.
+export const THEME_ATTRIBUTE = 'data-theme'
+
+export const THEME_STORAGE_KEY = 'theme'
+
 export const MAIN_SELECTOR = '#main'
 
 export const SIDEBAR_SELECTOR = '[data-sidebar="sidebar"]'
@@ -84,6 +96,17 @@ export const ENFORCED_RULES: string[] = []
 
 export interface AxeArtifact extends A11yScanResult {
   scannedRules: string[]
+  theme: string
+}
+
+// Read back what rendered rather than trusting what was requested. A scan that
+// silently fell back to the other theme produces a baseline nobody can
+// reproduce.
+export async function readTheme(page: Page): Promise<string> {
+  return page.evaluate(
+    (attribute) => document.documentElement.getAttribute(attribute) ?? 'unknown',
+    THEME_ATTRIBUTE
+  )
 }
 
 export const AXE_RESULTS_DIR = path.resolve(import.meta.dirname, '..', 'axe-results')
@@ -96,7 +119,7 @@ export async function scanRoute(page: Page, surface: string): Promise<AxeArtifac
     tags: SCAN_TAGS,
   })
 
-  return { ...result, scannedRules: RATCHETED_RULES }
+  return { ...result, scannedRules: RATCHETED_RULES, theme: await readTheme(page) }
 }
 
 export async function scanShellRegion(
@@ -112,7 +135,7 @@ export async function scanShellRegion(
     tags: SCAN_TAGS,
   })
 
-  return { ...result, scannedRules: CONTENT_RULES }
+  return { ...result, scannedRules: CONTENT_RULES, theme: await readTheme(page) }
 }
 
 export function unloadedResult(
@@ -121,7 +144,11 @@ export function unloadedResult(
   status: number | null,
   include: string
 ): AxeArtifact {
-  return { ...unloadedResultFor(surface, url, status, include, EXCLUDED_RULES), scannedRules: [] }
+  return {
+    ...unloadedResultFor(surface, url, status, include, EXCLUDED_RULES),
+    scannedRules: [],
+    theme: 'unknown',
+  }
 }
 
 // One file per scan unit. Playwright workers write concurrently, so a single

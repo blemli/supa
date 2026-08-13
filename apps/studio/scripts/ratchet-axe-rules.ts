@@ -73,6 +73,7 @@ interface ScanArtifact {
   loaded?: boolean
   elementCount?: number
   scannedRules?: string[]
+  theme?: string
   violations?: ScanViolation[]
 }
 
@@ -82,6 +83,7 @@ interface ScanExecutionResult {
 }
 
 interface BaselineData {
+  theme?: string
   rules: Record<string, number>
   ruleRoutes?: Record<string, Record<string, number>>
 }
@@ -251,6 +253,16 @@ function findUnusableScans(results: ScanArtifact[]): { unloaded: string[]; empty
   return { unloaded, empty }
 }
 
+// `color-contrast` counts are theme-specific, so a baseline is only meaningful
+// alongside the theme it was captured in.
+function collectThemes(results: ScanArtifact[]): string[] {
+  const themes = new Set<string>()
+  for (const artifact of results) {
+    if (artifact?.theme) themes.add(artifact.theme)
+  }
+  return [...themes]
+}
+
 // Guards against ratcheting a rule the scan never actually ran, which would
 // baseline at zero and stay there.
 function findUnscannedRules(results: ScanArtifact[], ruleIds: string[]): string[] {
@@ -268,7 +280,7 @@ function readBaselines(fp: string): BaselineData | null {
   try {
     const data = JSON.parse(readFileSync(fp, 'utf8')) as Partial<BaselineData>
     if (data && typeof data === 'object' && data.rules && typeof data.rules === 'object') {
-      return { rules: data.rules, ruleRoutes: data.ruleRoutes ?? {} }
+      return { theme: data.theme, rules: data.rules, ruleRoutes: data.ruleRoutes ?? {} }
     }
   } catch {
     // ignore invalid metadata files and report them as missing baselines
@@ -276,7 +288,12 @@ function readBaselines(fp: string): BaselineData | null {
   return null
 }
 
-function writeBaselines(fp: string, updates: Record<string, RuleSnapshot>, merge = true): void {
+function writeBaselines(
+  fp: string,
+  updates: Record<string, RuleSnapshot>,
+  theme: string | undefined,
+  merge = true
+): void {
   mkdirSync(path.dirname(fp), { recursive: true })
 
   const current = (merge && readBaselines(fp)) || { rules: {}, ruleRoutes: {} }
@@ -289,7 +306,11 @@ function writeBaselines(fp: string, updates: Record<string, RuleSnapshot>, merge
     nextRuleRoutes[rule] = snapshot.routes
   }
 
-  const next: BaselineData = { rules: nextRules, ruleRoutes: nextRuleRoutes }
+  const next: BaselineData = {
+    theme: theme ?? current.theme,
+    rules: nextRules,
+    ruleRoutes: nextRuleRoutes,
+  }
   writeFileSync(fp, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
 }
 
@@ -320,6 +341,18 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
     return 2
   }
 
+  const themes = collectThemes(results)
+  if (themes.length > 1) {
+    const msg =
+      `Scan units rendered in more than one theme: ${themes.join(', ')}. Contrast counts are ` +
+      'theme-specific, so a mixed run cannot be compared against one baseline.'
+    console.error(msg)
+    writeSummary(`### Axe rule ratchet\n${msg}`)
+    console.log(`::error title=Mixed themes::${msg}`)
+    return 2
+  }
+  const scanTheme = themes[0]
+
   const unscanned = findUnscannedRules(results, args.rules)
   if (unscanned.length) {
     const msg =
@@ -346,7 +379,7 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
   }
 
   if (args.init) {
-    writeBaselines(args.metadata, currentSnapshots, true)
+    writeBaselines(args.metadata, currentSnapshots, scanTheme, true)
 
     const rows = Object.entries(currentCounts)
       .map(([rule, count]) => `| \`${rule}\` | **${count}** |`)
@@ -356,6 +389,7 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
       [
         `### Axe rule baselines initialized`,
         `Metadata: \`${args.metadata}\``,
+        `Theme: \`${scanTheme ?? 'unrecorded'}\``,
         ``,
         `| Rule | Baseline |`,
         `| --- | ---: |`,
@@ -376,6 +410,16 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
     console.error(msg)
     writeSummary(`### Axe rule ratchet\n${msg}`)
     console.log(`::error title=Missing baselines::${msg}`)
+    return 2
+  }
+
+  if (baselineData.theme && scanTheme && baselineData.theme !== scanTheme) {
+    const msg =
+      `The scan rendered in the "${scanTheme}" theme but ${args.metadata} was captured in ` +
+      `"${baselineData.theme}". Contrast counts are theme-specific, so these are not comparable.`
+    console.error(msg)
+    writeSummary(`### Axe rule ratchet\n${msg}`)
+    console.log(`::error title=Theme mismatch::${msg}`)
     return 2
   }
 
@@ -438,6 +482,7 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
   const summaryLines = [
     `### Axe rule ratchet`,
     `Metadata: \`${args.metadata}\``,
+    `Theme: \`${scanTheme ?? 'unrecorded'}\``,
     ``,
     `| Rule | Baseline | Current | Δ |`,
     `| --- | ---: | ---: | ---: |`,
@@ -461,7 +506,7 @@ export function runAxeRatchet(argv: string[], readViolations = readScanResults):
         details.push(`- \`${rule}\`: ${from} -> ${to}`)
         logParts.push(`${rule}: ${from} -> ${to}`)
       }
-      writeBaselines(args.metadata, updates, true)
+      writeBaselines(args.metadata, updates, scanTheme, true)
       summaryLines.push('', 'Baselines decreased for improved rules:', ...details, '')
       console.log(`Baselines decreased for improved rules: ${logParts.join(', ')}`)
     }
