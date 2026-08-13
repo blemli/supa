@@ -241,12 +241,18 @@ carry them.
    pnpm -C e2e/www exec playwright show-report
    ```
 
-2. Inspect traces and screenshots under `test-results/` for failed runs.
+2. Inspect traces and screenshots under `test-results/` for failed runs. The
+   global-element suite writes to `test-results-global-elements/` and
+   `playwright-report-global-elements/` instead, so the two runs never overwrite
+   each other's output.
 
 ## How CI uses this suite
 
-The workflow at `.github/workflows/www-e2e.yml` runs on pull requests that touch
-owned www content, `e2e/www`, or `e2e/shared`.
+The workflow at `.github/workflows/www-e2e.yml` runs both suites in one job, each
+behind its own paths filter.
+
+The page suite runs on pull requests that touch owned www content, `e2e/www`, or
+`e2e/shared`.
 
 1. Diff the pull request against its base branch and resolve in-scope page paths.
 2. Skip Playwright when nothing in scope changed.
@@ -255,9 +261,20 @@ owned www content, `e2e/www`, or `e2e/shared`.
    than test against production, which does not have pages the pull request adds.
 4. Run the suite with `WWW_E2E_PAGE_PATHS` set to the resolved list.
 
+The global-element suite runs on pull requests that touch `apps/www/components`,
+`apps/www/layouts`, the app shell, or the harness. A content-only pull request
+never reaches it.
+
+1. Reuse the same preview when one resolved.
+2. Fall back to production when no preview resolved and the pull request changes
+   no `apps/www` files. A harness-only change ships no markup, so production is
+   the same surface.
+3. Skip when no preview resolved and the pull request does change `apps/www`,
+   because production would not have those chrome changes.
+
 Draft pull requests stay skipped until you mark them ready for review. Manual
-`workflow_dispatch` runs require a `page_paths` input and accept an optional
-`base_url`, which defaults to production.
+`workflow_dispatch` runs accept an optional `base_url`, which defaults to
+production, and require a `page_paths` input for the page suite only.
 
 ## Shared helpers
 
