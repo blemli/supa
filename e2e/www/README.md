@@ -125,9 +125,13 @@ alternatives pull request. It stays in `EXTRA_REPORTED_RULES` until that is fixe
 
 - Events with `disable_page_build: true`, which return a 404 by design
 - Static marketing routes under `apps/www/pages` and `apps/www/app`
-- Index and listing pages such as `/blog` and `/customers`
+- Index and listing pages such as `/blog` and `/customers`, for the page suite.
+  The global-element suite covers them.
 - Link checking
-- Shared chrome: header, footer, and anything else outside the article wrapper
+
+Shared chrome — the nav, the footer, and everything else outside the article
+wrapper — belongs to the global-element suite described in
+[Scan global elements](#scan-global-elements).
 
 ### Limits
 
@@ -174,8 +178,60 @@ Event articles are short enough that a scan can fall under the 20-element floor 
 warn that a clean result proves nothing. That reflects the template, not a broken
 run.
 
-Not covered: shared chrome, listing pages, and most of WCAG. Keyboard navigation,
-focus management, and screen reader behavior need manual testing.
+Not covered by the page scan: shared chrome, listing pages, and most of WCAG.
+Keyboard navigation, focus management, and screen reader behavior need manual
+testing.
+
+### Scan global elements
+
+The page scan stops at the article wrapper. The global-element suite covers the
+other half — the nav, the footer, and the rest of the page scaffolding:
+
+```bash
+PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:www:global-elements
+```
+
+It scans a fixed list of eight pages, one per layout, at both a 1280x800 desktop
+and a 390x844 mobile viewport, plus one pass with the mobile menu open. The list
+lives in `utils/www-global-elements.ts` and resolves nothing from your git diff,
+so the same chrome gets scanned no matter what you changed.
+
+Each scan covers the document with that page's article wrapper excluded. Listing
+pages and `/` render no article, so they declare `articleSelector: null` rather
+than excluding a selector that matches nothing — excluding nothing would
+silently widen the scan back to the whole page.
+
+Chrome ships on every page, so the enforced set is stricter here than for
+content. `GLOBAL_ELEMENTS_ENFORCED_RULES` holds the WCAG 2.1 A/AA rules that
+apply to every page in the list and pass today; a failure there is a regression
+in markup every visitor sees. Rules that apply to only some pages, and rules
+with findings today, stay reported.
+
+This inverts the page scan's exclusions. `document-title`, `html-has-lang`,
+`html-lang-valid`, and `meta-viewport` are unreachable from an article-scoped
+scan and become enforceable here. `color-contrast` is reachable too, and it is
+about three quarters of axe's runtime — worth paying, because this is the only
+suite that checks www contrast at all.
+
+`GLOBAL_ELEMENTS_EXTRA_REPORTED_RULES` holds `heading-order` and
+`landmark-unique`. Both are axe best-practice rules rather than WCAG, so they
+need a pass of their own, and both are reported and never blocking:
+
+- The footer's `h6` headings sit under a screen-reader-only `h2`, which is a
+  `heading-order` skip on every www page. Enforcing it would fail nearly every
+  content pull request.
+- The event template nests a `<main>` inside the layout's `<main id="main">`,
+  which `landmark-unique` reports on every event page.
+
+`dedupeViolations` collapses repeats, so a finding in shared chrome reports once
+per worker instead of once per page per viewport.
+
+Element presence is asserted softly, so a missing nav still reports its scan
+instead of hiding it behind a hard failure.
+
+Point this suite at your pull request's preview, not production, whenever you
+change chrome — the `data-testid` hooks it looks for only exist on branches that
+carry them.
 
 ## Debug failures
 
