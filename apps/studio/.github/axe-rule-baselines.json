@@ -1,0 +1,103 @@
+{
+  "rules": {
+    "aria-required-children": 8,
+    "aria-required-parent": 36,
+    "color-contrast": 0,
+    "duplicate-id-aria": 0,
+    "heading-order": 1,
+    "label": 1,
+    "landmark-banner-is-top-level": 0,
+    "landmark-complementary-is-top-level": 0,
+    "landmark-contentinfo-is-top-level": 0,
+    "landmark-main-is-top-level": 10,
+    "landmark-no-duplicate-banner": 0,
+    "landmark-no-duplicate-contentinfo": 0,
+    "landmark-no-duplicate-main": 10,
+    "landmark-one-main": 0,
+    "landmark-unique": 10,
+    "nested-interactive": 0,
+    "page-has-heading-one": 6,
+    "region": 0,
+    "scrollable-region-focusable": 0
+  },
+  "ruleRoutes": {
+    "aria-required-children": {
+      "/project/default/advisors/security": 1,
+      "/project/default/auth/users": 1,
+      "/project/default/database/schemas": 1,
+      "/project/default/database/tables": 1,
+      "/project/default/settings/general": 1,
+      "/project/default/sql": 1,
+      "/project/default/storage/files": 2
+    },
+    "aria-required-parent": {
+      "/project/default/advisors/security": 3,
+      "/project/default/auth/users": 2,
+      "/project/default/database/schemas": 12,
+      "/project/default/database/tables": 12,
+      "/project/default/settings/general": 6,
+      "/project/default/storage/files": 1
+    },
+    "color-contrast": {},
+    "duplicate-id-aria": {},
+    "heading-order": {
+      "/project/default": 1
+    },
+    "label": {
+      "/project/default/settings/general": 1
+    },
+    "landmark-banner-is-top-level": {},
+    "landmark-complementary-is-top-level": {},
+    "landmark-contentinfo-is-top-level": {},
+    "landmark-main-is-top-level": {
+      "/project/default/advisors/security": 1,
+      "/project/default/auth/users": 1,
+      "/project/default/database/schemas": 1,
+      "/project/default/database/tables": 1,
+      "/project/default/editor": 1,
+      "/project/default/observability/query-performance": 1,
+      "/project/default/settings/general": 1,
+      "/project/default/sql": 1,
+      "/project/default/storage/files": 1,
+      "/project/default": 1
+    },
+    "landmark-no-duplicate-banner": {},
+    "landmark-no-duplicate-contentinfo": {},
+    "landmark-no-duplicate-main": {
+      "/project/default/advisors/security": 1,
+      "/project/default/auth/users": 1,
+      "/project/default/database/schemas": 1,
+      "/project/default/database/tables": 1,
+      "/project/default/editor": 1,
+      "/project/default/observability/query-performance": 1,
+      "/project/default/settings/general": 1,
+      "/project/default/sql": 1,
+      "/project/default/storage/files": 1,
+      "/project/default": 1
+    },
+    "landmark-one-main": {},
+    "landmark-unique": {
+      "/project/default/advisors/security": 1,
+      "/project/default/auth/users": 1,
+      "/project/default/database/schemas": 1,
+      "/project/default/database/tables": 1,
+      "/project/default/editor": 1,
+      "/project/default/observability/query-performance": 1,
+      "/project/default/settings/general": 1,
+      "/project/default/sql": 1,
+      "/project/default/storage/files": 1,
+      "/project/default": 1
+    },
+    "nested-interactive": {},
+    "page-has-heading-one": {
+      "/project/default/advisors/security": 1,
+      "/project/default/auth/users": 1,
+      "/project/default/database/schemas": 1,
+      "/project/default/editor": 1,
+      "/project/default/observability/query-performance": 1,
+      "/project/default/sql": 1
+    },
+    "region": {},
+    "scrollable-region-focusable": {}
+  }
+}

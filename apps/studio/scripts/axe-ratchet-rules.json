@@ -1,0 +1,21 @@
+[
+  "aria-required-children",
+  "aria-required-parent",
+  "color-contrast",
+  "duplicate-id-aria",
+  "heading-order",
+  "label",
+  "landmark-banner-is-top-level",
+  "landmark-complementary-is-top-level",
+  "landmark-contentinfo-is-top-level",
+  "landmark-main-is-top-level",
+  "landmark-no-duplicate-banner",
+  "landmark-no-duplicate-contentinfo",
+  "landmark-no-duplicate-main",
+  "landmark-one-main",
+  "landmark-unique",
+  "nested-interactive",
+  "page-has-heading-one",
+  "region",
+  "scrollable-region-focusable"
+]
