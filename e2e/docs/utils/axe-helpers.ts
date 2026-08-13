@@ -22,6 +22,27 @@ export const EXCLUDED_RULES = [
   'css-orientation-lock',
 ]
 
+// Keep this list green: a violation here lands on every docs page. Rules must
+// be within WCAG_TAGS, since scanExcluding makes one tagged pass.
+export const GLOBAL_ELEMENTS_ENFORCED_RULES = [
+  'aria-allowed-attr',
+  'aria-deprecated-role',
+  'aria-hidden-focus',
+  'aria-roles',
+  'aria-valid-attr',
+  'bypass',
+  'document-title',
+  'html-has-lang',
+  'html-lang-valid',
+  'image-alt',
+  'link-name',
+  'meta-viewport',
+  'nested-interactive',
+]
+
+// `page-has-heading-one` targets the excluded article.
+export const GLOBAL_ELEMENTS_EXCLUDED_RULES = ['page-has-heading-one']
+
 export async function scanArticle(
   page: Page,
   surface: string,

@@ -16,6 +16,7 @@ This page covers:
   scope is wrong
 - [What the suite covers](#what-the-suite-covers) — in-scope paths and limits
 - [Accessibility scans](#accessibility-scans) — WCAG coverage and skipped rules
+- [Global element scans](#global-element-scans) — navigation, sidebar, and footer
 - [Debug failures](#debug-failures) — reports and traces
 - [How CI uses this suite](#how-ci-uses-this-suite) — pull request behavior
 
@@ -185,13 +186,90 @@ own content.
 
 `EXCLUDED_RULES` in `utils/axe-helpers.ts` lists the rules the scan skips.
 `color-contrast` is most of the scan time and finds nothing inside an article, since
-docs contrast comes from shared tokens and chrome. The rest target `<html>`, `<head>`,
-and `<body>`, which an article-scoped scan can't reach.
+docs contrast comes from shared tokens and global elements. The rest target `<html>`,
+`<head>`, and `<body>`, which an article-scoped scan can't reach.
 
 Cross-origin frames are skipped, so a third-party embed isn't reported as ours.
 
-Not covered: `/docs/reference/*`, shared chrome, and most of WCAG. Keyboard
-navigation, focus management, and screen reader behavior need manual testing.
+Not covered: `/docs/reference/*` articles and most of WCAG. Keyboard navigation,
+focus management, and screen reader behavior need manual testing. For everything
+outside the article, see [Global element scans](#global-element-scans).
+
+## Global element scans
+
+This suite scans what the per-page suite excludes: the top navigation bar,
+sidebar navigation, content sidebar, breadcrumbs, and footer.
+
+```bash
+PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:docs:global-elements
+```
+
+These elements are global, so scope is a fixed list — one page per layout, in
+`utils/docs-global-elements.ts` — instead of the changed-files scope the
+per-page suite uses. A second page on a layout already covered would scan the
+same markup for the same result. Add a page only for a layout the list doesn't
+reach yet.
+
+Every page runs at two viewports, 1280x800 and 390x844. A layout hides
+different elements at each width, so the two runs scan different markup. One
+extra test opens the mobile menu overlay and scans it, because that markup only
+exists once opened. The overlay is the same list on every page, so one page
+covers it.
+
+Each page asserts that its elements are visible, then scans the page with the
+article excluded. Elements are matched on `data-testid` attributes in
+`apps/docs`, so a styling or markup change can't quietly drop one from the scan.
+Visibility rather than presence matters here, since axe skips hidden subtrees and
+an attached element that renders nothing would pass while scanning nothing. Which
+elements to expect at which width lives in `GLOBAL_ELEMENTS`. A missing element
+is a soft failure: the test still reports its scan.
+
+This suite keeps the page-level rules the article scan skips, such as
+`color-contrast`, `html-has-lang`, and `document-title`, because global elements
+are where those live. It drops only `page-has-heading-one`, whose target is the
+excluded article. `color-contrast` is most of the scan time, and this is the
+only suite that runs it.
+
+Like the article scan, most findings are reported as warnings. Blocking rules
+are `GLOBAL_ELEMENTS_ENFORCED_RULES` in `utils/axe-helpers.ts`. A violation in a
+global element appears on every docs page, so keep that list green rather than
+growing it.
+
+Everything on that list passes today and is applicable on every scanned surface,
+so each rule guards something. Before adding one, check that axe reports passing
+nodes for it rather than reporting it as inapplicable, and that it has no
+`incomplete` nodes. Inapplicable rules guard nothing, and undecided ones can flip
+to failing on an unrelated change.
+
+`button-name` is reported rather than blocking. The filter comboboxes on
+`/docs/guides/troubleshooting` have no accessible name, and they also trip
+`aria-required-attr`. The sidebar toggle in `layouts/MainSkeleton.tsx` is
+icon-only and unnamed, which shows up at mobile width. Promote the rule once
+those are named.
+
+The same markup repeats across 13 surfaces, so a finding is reported once and
+suppressed afterward. The set of what's been seen lives in one worker process,
+so a run split across N workers can report a finding up to N times. Playwright
+also replaces a worker after a failing test, which starts the set over.
+
+The two suites are Playwright projects in `playwright.config.ts` and keep
+separate reports, so `pnpm e2e:docs` on a content pull request never picks up
+global elements:
+
+| Suite           | Project           | Command                         | Report folder                        |
+| --------------- | ----------------- | ------------------------------- | ------------------------------------ |
+| Per-page        | `pages`           | `pnpm e2e:docs`                 | `playwright-report/`                 |
+| Global elements | `global-elements` | `pnpm e2e:docs:global-elements` | `playwright-report-global-elements/` |
+
+Not covered:
+
+- Keyboard behavior in the mobile menu, including focus order and focus
+  trapping. Axe reports the markup, not the interaction.
+- Global elements that arrive through `packages/ui` rather than `apps/docs`. CI
+  doesn't watch that path, so run this manually when a shared component changes.
+- Client library reference pages such as `/docs/reference/javascript/*`, which
+  serve a bare link list to a headless browser and render nothing to scan.
+  `/docs/reference/cli/introduction` covers the reference layout instead.
 
 ## Debug failures
 
@@ -218,3 +296,16 @@ owned docs content, partials, or `e2e/docs`.
 Draft pull requests stay skipped until you mark them ready for review. Manual
 `workflow_dispatch` runs require a `page_paths` input and accept an optional
 `base_url`, which defaults to production.
+
+The same workflow runs the global element suite as a second step, on pull
+requests that touch `apps/docs/app/**`, `apps/docs/components/**`,
+`apps/docs/features/ui/**`, `apps/docs/layouts/**`, `e2e/docs/**`,
+`e2e/shared/**`, `pnpm-lock.yaml`, or the workflow itself. A content-only pull
+request skips it.
+
+Both steps prefer the Vercel preview. They differ when no preview resolves: the
+page suite skips, while the global element suite falls back to production if
+`apps/docs` didn't change, since a harness-only change ships no markup of its
+own. A fork pull request runs without repository secrets and resolves no
+preview, so an `apps/docs` change from a fork skips both steps. Cover it by
+running the workflow manually against its preview.
