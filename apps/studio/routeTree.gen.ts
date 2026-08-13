@@ -281,6 +281,7 @@ import { Route as ApiPlatformAuthRefUsersIndexRouteImport } from './routes/api/p
 import { Route as ProjectRefStorageVectorsBucketsBucketIdRouteImport } from './routes/project/$ref/storage/vectors/buckets/$bucketId'
 import { Route as ProjectRefStorageFilesBucketsBucketIdRouteImport } from './routes/project/$ref/storage/files/buckets/$bucketId'
 import { Route as ProjectRefStorageAnalyticsBucketsBucketIdRouteImport } from './routes/project/$ref/storage/analytics/buckets/$bucketId'
+import { Route as ProjectRefSettingsInfrastructureReplicaReplicaIdRouteImport } from './routes/project/$ref/settings/infrastructure/replica/$replicaId'
 import { Route as ProjectRefDatabaseReplicationReplicaReplicaIdRouteImport } from './routes/project/$ref/database/replication/replica/$replicaId'
 import { Route as ApiV1ProjectsRefTypesTypescriptRouteImport } from './routes/api/v1/projects/$ref/types/typescript'
 import { Route as ApiV1ProjectsRefDatabaseMigrationsRouteImport } from './routes/api/v1/projects/$ref/database/migrations'
@@ -1825,6 +1826,12 @@ const ProjectRefStorageAnalyticsBucketsBucketIdRoute =
     path: '/analytics/buckets/$bucketId',
     getParentRoute: () => ProjectRefStorageRoute,
   } as any)
+const ProjectRefSettingsInfrastructureReplicaReplicaIdRoute =
+  ProjectRefSettingsInfrastructureReplicaReplicaIdRouteImport.update({
+    id: '/replica/$replicaId',
+    path: '/replica/$replicaId',
+    getParentRoute: () => ProjectRefSettingsInfrastructureRoute,
+  } as any)
 const ProjectRefDatabaseReplicationReplicaReplicaIdRoute =
   ProjectRefDatabaseReplicationReplicaReplicaIdRouteImport.update({
     id: '/replication/replica/$replicaId',
@@ -2222,7 +2229,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/settings/api-keys': typeof ProjectRefSettingsApiKeysRouteWithChildren
   '/project/$ref/settings/dashboard': typeof ProjectRefSettingsDashboardRoute
   '/project/$ref/settings/general': typeof ProjectRefSettingsGeneralRoute
-  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRoute
+  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRouteWithChildren
   '/project/$ref/settings/integrations': typeof ProjectRefSettingsIntegrationsRoute
   '/project/$ref/settings/log-drains': typeof ProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof ProjectRefSqlIdRoute
@@ -2326,6 +2333,7 @@ export interface FileRoutesByFullPath {
   '/api/v1/projects/$ref/database/migrations': typeof ApiV1ProjectsRefDatabaseMigrationsRoute
   '/api/v1/projects/$ref/types/typescript': typeof ApiV1ProjectsRefTypesTypescriptRoute
   '/project/$ref/database/replication/replica/$replicaId': typeof ProjectRefDatabaseReplicationReplicaReplicaIdRoute
+  '/project/$ref/settings/infrastructure/replica/$replicaId': typeof ProjectRefSettingsInfrastructureReplicaReplicaIdRoute
   '/project/$ref/storage/analytics/buckets/$bucketId': typeof ProjectRefStorageAnalyticsBucketsBucketIdRoute
   '/project/$ref/storage/files/buckets/$bucketId': typeof ProjectRefStorageFilesBucketsBucketIdRoute
   '/project/$ref/storage/vectors/buckets/$bucketId': typeof ProjectRefStorageVectorsBucketsBucketIdRoute
@@ -2519,7 +2527,7 @@ export interface FileRoutesByTo {
   '/project/$ref/settings/api': typeof ProjectRefSettingsApiRoute
   '/project/$ref/settings/dashboard': typeof ProjectRefSettingsDashboardRoute
   '/project/$ref/settings/general': typeof ProjectRefSettingsGeneralRoute
-  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRoute
+  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRouteWithChildren
   '/project/$ref/settings/integrations': typeof ProjectRefSettingsIntegrationsRoute
   '/project/$ref/settings/log-drains': typeof ProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof ProjectRefSqlIdRoute
@@ -2623,6 +2631,7 @@ export interface FileRoutesByTo {
   '/api/v1/projects/$ref/database/migrations': typeof ApiV1ProjectsRefDatabaseMigrationsRoute
   '/api/v1/projects/$ref/types/typescript': typeof ApiV1ProjectsRefTypesTypescriptRoute
   '/project/$ref/database/replication/replica/$replicaId': typeof ProjectRefDatabaseReplicationReplicaReplicaIdRoute
+  '/project/$ref/settings/infrastructure/replica/$replicaId': typeof ProjectRefSettingsInfrastructureReplicaReplicaIdRoute
   '/project/$ref/storage/analytics/buckets/$bucketId': typeof ProjectRefStorageAnalyticsBucketsBucketIdRoute
   '/project/$ref/storage/files/buckets/$bucketId': typeof ProjectRefStorageFilesBucketsBucketIdRoute
   '/project/$ref/storage/vectors/buckets/$bucketId': typeof ProjectRefStorageVectorsBucketsBucketIdRoute
@@ -2832,7 +2841,7 @@ export interface FileRoutesById {
   '/project/$ref/settings/api-keys': typeof ProjectRefSettingsApiKeysRouteWithChildren
   '/project/$ref/settings/dashboard': typeof ProjectRefSettingsDashboardRoute
   '/project/$ref/settings/general': typeof ProjectRefSettingsGeneralRoute
-  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRoute
+  '/project/$ref/settings/infrastructure': typeof ProjectRefSettingsInfrastructureRouteWithChildren
   '/project/$ref/settings/integrations': typeof ProjectRefSettingsIntegrationsRoute
   '/project/$ref/settings/log-drains': typeof ProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof ProjectRefSqlIdRoute
@@ -2936,6 +2945,7 @@ export interface FileRoutesById {
   '/api/v1/projects/$ref/database/migrations': typeof ApiV1ProjectsRefDatabaseMigrationsRoute
   '/api/v1/projects/$ref/types/typescript': typeof ApiV1ProjectsRefTypesTypescriptRoute
   '/project/$ref/database/replication/replica/$replicaId': typeof ProjectRefDatabaseReplicationReplicaReplicaIdRoute
+  '/project/$ref/settings/infrastructure/replica/$replicaId': typeof ProjectRefSettingsInfrastructureReplicaReplicaIdRoute
   '/project/$ref/storage/analytics/buckets/$bucketId': typeof ProjectRefStorageAnalyticsBucketsBucketIdRoute
   '/project/$ref/storage/files/buckets/$bucketId': typeof ProjectRefStorageFilesBucketsBucketIdRoute
   '/project/$ref/storage/vectors/buckets/$bucketId': typeof ProjectRefStorageVectorsBucketsBucketIdRoute
@@ -3248,6 +3258,7 @@ export interface FileRouteTypes {
     | '/api/v1/projects/$ref/database/migrations'
     | '/api/v1/projects/$ref/types/typescript'
     | '/project/$ref/database/replication/replica/$replicaId'
+    | '/project/$ref/settings/infrastructure/replica/$replicaId'
     | '/project/$ref/storage/analytics/buckets/$bucketId'
     | '/project/$ref/storage/files/buckets/$bucketId'
     | '/project/$ref/storage/vectors/buckets/$bucketId'
@@ -3545,6 +3556,7 @@ export interface FileRouteTypes {
     | '/api/v1/projects/$ref/database/migrations'
     | '/api/v1/projects/$ref/types/typescript'
     | '/project/$ref/database/replication/replica/$replicaId'
+    | '/project/$ref/settings/infrastructure/replica/$replicaId'
     | '/project/$ref/storage/analytics/buckets/$bucketId'
     | '/project/$ref/storage/files/buckets/$bucketId'
     | '/project/$ref/storage/vectors/buckets/$bucketId'
@@ -3857,6 +3869,7 @@ export interface FileRouteTypes {
     | '/api/v1/projects/$ref/database/migrations'
     | '/api/v1/projects/$ref/types/typescript'
     | '/project/$ref/database/replication/replica/$replicaId'
+    | '/project/$ref/settings/infrastructure/replica/$replicaId'
     | '/project/$ref/storage/analytics/buckets/$bucketId'
     | '/project/$ref/storage/files/buckets/$bucketId'
     | '/project/$ref/storage/vectors/buckets/$bucketId'
@@ -5925,6 +5938,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectRefStorageAnalyticsBucketsBucketIdRouteImport
       parentRoute: typeof ProjectRefStorageRoute
     }
+    '/project/$ref/settings/infrastructure/replica/$replicaId': {
+      id: '/project/$ref/settings/infrastructure/replica/$replicaId'
+      path: '/replica/$replicaId'
+      fullPath: '/project/$ref/settings/infrastructure/replica/$replicaId'
+      preLoaderRoute: typeof ProjectRefSettingsInfrastructureReplicaReplicaIdRouteImport
+      parentRoute: typeof ProjectRefSettingsInfrastructureRoute
+    }
     '/project/$ref/database/replication/replica/$replicaId': {
       id: '/project/$ref/database/replication/replica/$replicaId'
       path: '/replication/replica/$replicaId'
@@ -6716,13 +6736,28 @@ const ProjectRefSettingsApiKeysRouteWithChildren =
     ProjectRefSettingsApiKeysRouteChildren,
   )
 
+interface ProjectRefSettingsInfrastructureRouteChildren {
+  ProjectRefSettingsInfrastructureReplicaReplicaIdRoute: typeof ProjectRefSettingsInfrastructureReplicaReplicaIdRoute
+}
+
+const ProjectRefSettingsInfrastructureRouteChildren: ProjectRefSettingsInfrastructureRouteChildren =
+  {
+    ProjectRefSettingsInfrastructureReplicaReplicaIdRoute:
+      ProjectRefSettingsInfrastructureReplicaReplicaIdRoute,
+  }
+
+const ProjectRefSettingsInfrastructureRouteWithChildren =
+  ProjectRefSettingsInfrastructureRoute._addFileChildren(
+    ProjectRefSettingsInfrastructureRouteChildren,
+  )
+
 interface ProjectRefSettingsRouteChildren {
   ProjectRefSettingsAddonsRoute: typeof ProjectRefSettingsAddonsRoute
   ProjectRefSettingsApiRoute: typeof ProjectRefSettingsApiRoute
   ProjectRefSettingsApiKeysRoute: typeof ProjectRefSettingsApiKeysRouteWithChildren
   ProjectRefSettingsDashboardRoute: typeof ProjectRefSettingsDashboardRoute
   ProjectRefSettingsGeneralRoute: typeof ProjectRefSettingsGeneralRoute
-  ProjectRefSettingsInfrastructureRoute: typeof ProjectRefSettingsInfrastructureRoute
+  ProjectRefSettingsInfrastructureRoute: typeof ProjectRefSettingsInfrastructureRouteWithChildren
   ProjectRefSettingsIntegrationsRoute: typeof ProjectRefSettingsIntegrationsRoute
   ProjectRefSettingsLogDrainsRoute: typeof ProjectRefSettingsLogDrainsRoute
   ProjectRefSettingsBillingUsageRoute: typeof ProjectRefSettingsBillingUsageRoute
@@ -6738,7 +6773,8 @@ const ProjectRefSettingsRouteChildren: ProjectRefSettingsRouteChildren = {
   ProjectRefSettingsApiKeysRoute: ProjectRefSettingsApiKeysRouteWithChildren,
   ProjectRefSettingsDashboardRoute: ProjectRefSettingsDashboardRoute,
   ProjectRefSettingsGeneralRoute: ProjectRefSettingsGeneralRoute,
-  ProjectRefSettingsInfrastructureRoute: ProjectRefSettingsInfrastructureRoute,
+  ProjectRefSettingsInfrastructureRoute:
+    ProjectRefSettingsInfrastructureRouteWithChildren,
   ProjectRefSettingsIntegrationsRoute: ProjectRefSettingsIntegrationsRoute,
   ProjectRefSettingsLogDrainsRoute: ProjectRefSettingsLogDrainsRoute,
   ProjectRefSettingsBillingUsageRoute: ProjectRefSettingsBillingUsageRoute,
