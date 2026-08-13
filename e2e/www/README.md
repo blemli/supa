@@ -112,21 +112,22 @@ prefix; customers and alternatives use the filename as-is.
 
 Each page gets one test: it must return a successful status, and an axe scan
 must report no `page-has-heading-one` violations. That is the only rule enforced
-today — add more to `ENFORCED_RULES` in `features/www-pages.spec.ts` once a class
-of issue reaches zero across the site.
+today — add more to `ENFORCED_RULES` in `utils/axe-helpers.ts` once a class of
+issue reaches zero across the site.
 
-`ENFORCED_RULES` is deliberately separate from the docs suite's list. Docs
-enforces `heading-order` as well; www cannot yet. A full-site scan found
-`heading-order` violations on the large majority of content pages, almost all
-from the same two shared components — the related-posts card (`h4` under an `h2`)
-and a trailing `h6`. Enforcing it here would fail nearly every pull request.
+`heading-order` is scanned but never blocking. Article scoping already puts the
+two site-wide offenders out of reach — the footer `h6` sits outside `<main>`, and
+the blog related-posts `h4` sits below the article wrapper. The alternatives
+template still has one inside its article, so enforcing the rule would fail every
+alternatives pull request. It stays in `EXTRA_REPORTED_RULES` until that is fixed.
 
 ### Out of scope
 
 - Events with `disable_page_build: true`, which return a 404 by design
 - Static marketing routes under `apps/www/pages` and `apps/www/app`
 - Index and listing pages such as `/blog` and `/customers`
-- Link checking, and every accessibility rule other than the one above
+- Link checking
+- Shared chrome: header, footer, and anything else outside the article wrapper
 
 ### Limits
 
@@ -134,6 +135,47 @@ Resolved scope is capped at 20 pages so a large content drop cannot explode
 runtime. If a change resolves to more pages than that, only the first 20 in
 sorted order are tested. To test beyond the cap, use `pnpm e2e:www:all` or set
 `WWW_E2E_PAGE_PATHS` explicitly.
+
+## Accessibility scans
+
+The `@a11y`-tagged test scans each in-scope page for WCAG 2.1 A/AA violations using
+`@axe-core/playwright`, limited to the article wrapper for that template.
+
+```bash
+PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:www:a11y
+```
+
+Which pages get scanned comes from your branch, but the content comes from
+whatever you point `PLAYWRIGHT_BASE_URL` at. Production won't have your edits and
+will 404 on a page you just added, so use your pull request's preview to scan your
+own content.
+
+Findings are reported, not enforced. Only `ENFORCED_RULES` in `utils/axe-helpers.ts`
+fails the build; everything else lands as a warning annotation and in the
+`axe-results.json` attachment on the run. Set `A11Y_ENFORCE_ALL=1` to make every
+finding blocking locally.
+
+`wwwArticleSelectorForPagePath` in `utils/www-selectors.ts` maps each route prefix
+to its wrapper. The four content templates each wrap their body differently, so a
+route outside those four throws rather than guessing.
+
+`page-has-heading-one` runs against `<main id="main">` rather than the article.
+Blog and event templates render their `<h1>` outside the article wrapper, so an
+article-scoped scan would report a false violation on every one of those pages.
+
+`EXCLUDED_RULES` lists the rules the scan skips. `color-contrast` is most of the
+scan time and finds nothing inside an article, since www contrast comes from shared
+tokens and chrome. The rest target `<html>`, `<head>`, and `<body>`, which an
+article-scoped scan can't reach.
+
+Cross-origin frames are skipped, so a third-party embed isn't reported as ours.
+
+Event articles are short enough that a scan can fall under the 20-element floor and
+warn that a clean result proves nothing. That reflects the template, not a broken
+run.
+
+Not covered: shared chrome, listing pages, and most of WCAG. Keyboard navigation,
+focus management, and screen reader behavior need manual testing.
 
 ## Debug failures
 
