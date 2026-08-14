@@ -1,0 +1,5 @@
+# BuildKit per-Dockerfile ignore (upstream's .dockerignore excludes docker/ entirely).
+# Whitelist: the 2.4GB monorepo stays out of the build context.
+*
+!docker/volumes/api/envoy
+!dritte

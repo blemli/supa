@@ -1,0 +1,346 @@
+# Translation of docker/docker-compose.yml (upstream) into kamal.
+# Main app = envoy api gateway (plus dritte nginx/logli shim), everything else accessories.
+# network-alias entries recreate the compose service hostnames envoy/cds.yaml expects.
+service: supa
+image: blemli/supa
+
+servers:
+  web:
+    hosts:
+      - 185.66.109.77
+    options:
+      network-alias:
+        - api-gw
+        - kong
+        - envoy
+
+proxy:
+  ssl: true
+  host: supa.problem.li
+  app_port: 8080   # dritte nginx; envoy itself is on 8000
+
+registry:
+  server: localhost:5555
+
+env:
+  clear:
+    DASHBOARD_USERNAME: supa@problem.li
+  secret:
+    - ANON_KEY
+    - SERVICE_ROLE_KEY
+    - SUPABASE_PUBLISHABLE_KEY
+    - SUPABASE_SECRET_KEY
+    - ANON_KEY_ASYMMETRIC
+    - SERVICE_ROLE_KEY_ASYMMETRIC
+    - DASHBOARD_PASSWORD
+    - DASHBOARD2_USERNAME
+    - DASHBOARD2_PASSWORD
+    - LOGLI_SECRET
+
+builder:
+  arch:
+    - amd64
+  remote: ssh://webhost
+
+ssh:
+  config: true
+  port: 2022
+  user: deploy
+
+accessories:
+  db:
+    image: supabase/postgres:17.6.1.136
+    roles:
+      - web
+    cmd: postgres -c config_file=/etc/postgresql/postgresql.conf -c log_min_messages=fatal
+    options:
+      network-alias: db
+      health-cmd: "pg_isready -U postgres -h localhost"
+      health-start-period: "120s"
+    env:
+      clear:
+        POSTGRES_HOST: /var/run/postgresql
+        PGPORT: "5432"
+        POSTGRES_PORT: "5432"
+        PGDATABASE: postgres
+        POSTGRES_DB: postgres
+        JWT_EXP: "3600"
+      secret:
+        - POSTGRES_PASSWORD
+        - PGPASSWORD:POSTGRES_PASSWORD
+        - JWT_SECRET
+    files:
+      - docker/volumes/db/_supabase.sql:/docker-entrypoint-initdb.d/migrations/97-_supabase.sql:ro
+      - docker/volumes/db/realtime.sql:/docker-entrypoint-initdb.d/migrations/99-realtime.sql:ro
+      - docker/volumes/db/logs.sql:/docker-entrypoint-initdb.d/migrations/99-logs.sql:ro
+      - docker/volumes/db/pooler.sql:/docker-entrypoint-initdb.d/migrations/99-pooler.sql:ro
+      - docker/volumes/db/webhooks.sql:/docker-entrypoint-initdb.d/init-scripts/98-webhooks.sql:ro
+      - docker/volumes/db/roles.sql:/docker-entrypoint-initdb.d/init-scripts/99-roles.sql:ro
+      - docker/volumes/db/jwt.sql:/docker-entrypoint-initdb.d/init-scripts/99-jwt.sql:ro
+    volumes:
+      - supa-db-data:/var/lib/postgresql/data
+      - supa-db-config:/etc/postgresql-custom
+
+  meta:
+    image: supabase/postgres-meta:v0.96.6
+    roles:
+      - web
+    options:
+      network-alias: meta
+    env:
+      clear:
+        PG_META_PORT: "8080"
+        PG_META_DB_HOST: db
+        PG_META_DB_PORT: "5432"
+        PG_META_DB_NAME: postgres
+        PG_META_DB_USER: postgres
+      secret:
+        - PG_META_DB_PASSWORD:POSTGRES_PASSWORD
+        - CRYPTO_KEY:PG_META_CRYPTO_KEY
+
+  auth:
+    image: supabase/gotrue:v2.189.0
+    roles:
+      - web
+    options:
+      network-alias: auth
+      health-cmd: "wget --no-verbose --tries=1 --spider http://localhost:9999/health || exit 1"
+      health-start-period: "30s"
+    env:
+      clear:
+        GOTRUE_API_HOST: 0.0.0.0
+        GOTRUE_API_PORT: "9999"
+        API_EXTERNAL_URL: https://supa.problem.li/auth/v1
+        GOTRUE_DB_DRIVER: postgres
+        GOTRUE_SITE_URL: https://supa.problem.li
+        GOTRUE_URI_ALLOW_LIST: ""
+        GOTRUE_DISABLE_SIGNUP: "false"
+        GOTRUE_JWT_ADMIN_ROLES: service_role
+        GOTRUE_JWT_AUD: authenticated
+        GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+        GOTRUE_JWT_EXP: "3600"
+        GOTRUE_JWT_ISSUER: https://supa.problem.li/auth/v1
+        GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+        GOTRUE_EXTERNAL_ANONYMOUS_USERS_ENABLED: "false"
+        GOTRUE_MAILER_AUTOCONFIRM: "false"
+        GOTRUE_SMTP_ADMIN_EMAIL: supa@problem.li
+        GOTRUE_SMTP_HOST: server59.hostfactory.ch
+        GOTRUE_SMTP_PORT: "587"
+        GOTRUE_SMTP_USER: supa@problem.li
+        GOTRUE_SMTP_SENDER_NAME: "Supabase (supa.problem.li)"
+        GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+        GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+        GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+        GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+        GOTRUE_EXTERNAL_PHONE_ENABLED: "true"
+        GOTRUE_SMS_AUTOCONFIRM: "true"
+      secret:
+        - GOTRUE_DB_DATABASE_URL
+        - GOTRUE_JWT_SECRET:JWT_SECRET
+        - GOTRUE_JWT_KEYS:JWT_KEYS
+        - GOTRUE_SMTP_PASS:SMTP_PASS
+
+  rest:
+    image: postgrest/postgrest:v14.12
+    roles:
+      - web
+    cmd: postgrest
+    options:
+      network-alias: rest
+      health-cmd: "postgrest --ready"
+    env:
+      clear:
+        PGRST_DB_SCHEMAS: public,graphql_public
+        PGRST_DB_MAX_ROWS: "1000"
+        PGRST_DB_EXTRA_SEARCH_PATH: public
+        PGRST_DB_ANON_ROLE: anon
+        PGRST_ADMIN_SERVER_PORT: "3001"
+        PGRST_ADMIN_SERVER_HOST: localhost
+        PGRST_DB_USE_LEGACY_GUCS: "false"
+        PGRST_APP_SETTINGS_JWT_EXP: "3600"
+      secret:
+        - PGRST_DB_URI
+        - PGRST_JWT_SECRET:JWT_JWKS
+        - PGRST_APP_SETTINGS_JWT_SECRET:JWT_SECRET
+
+  realtime:
+    image: supabase/realtime:v2.102.3
+    roles:
+      - web
+    options:
+      network-alias: realtime-dev.supabase-realtime
+      health-cmd: "curl -sS -o /dev/null http://localhost:4000 || exit 1"
+      health-start-period: "30s"
+    env:
+      clear:
+        PORT: "4000"
+        DB_HOST: db
+        DB_PORT: "5432"
+        DB_USER: supabase_admin
+        DB_NAME: postgres
+        DB_AFTER_CONNECT_QUERY: SET search_path TO _realtime
+        ERL_AFLAGS: -proto_dist inet_tcp
+        DNS_NODES: "''"
+        RLIMIT_NOFILE: "10000"
+        APP_NAME: realtime
+        SEED_SELF_HOST: "true"
+        RUN_JANITOR: "true"
+        DISABLE_HEALTHCHECK_LOGGING: "true"
+      secret:
+        - DB_PASSWORD:POSTGRES_PASSWORD
+        - DB_ENC_KEY:REALTIME_DB_ENC_KEY
+        - API_JWT_SECRET:JWT_SECRET
+        - API_JWT_JWKS:JWT_JWKS
+        - SECRET_KEY_BASE
+        - METRICS_JWT_SECRET:JWT_SECRET
+
+  imgproxy:
+    image: darthsim/imgproxy:v3.30.1
+    roles:
+      - web
+    options:
+      network-alias: imgproxy
+      health-cmd: "imgproxy health"
+    env:
+      clear:
+        IMGPROXY_BIND: :5001
+        IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+        IMGPROXY_USE_ETAG: "true"
+        IMGPROXY_AUTO_WEBP: "true"
+        IMGPROXY_MAX_SRC_RESOLUTION: "16.8"
+    volumes:
+      - supa-storage:/var/lib/storage
+
+  storage:
+    image: supabase/storage-api:v1.60.4
+    roles:
+      - web
+    options:
+      network-alias: storage
+      health-cmd: "wget --no-verbose --tries=1 --spider http://localhost:5000/status || exit 1"
+      health-start-period: "30s"
+    env:
+      clear:
+        POSTGREST_URL: http://rest:3000
+        STORAGE_PUBLIC_URL: https://supa.problem.li
+        REQUEST_ALLOW_X_FORWARDED_PATH: "true"
+        FILE_SIZE_LIMIT: "52428800"
+        STORAGE_BACKEND: file
+        GLOBAL_S3_BUCKET: supa
+        FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+        TENANT_ID: supa
+        REGION: seuzach-ost1
+        ENABLE_IMAGE_TRANSFORMATION: "true"
+        IMGPROXY_URL: http://imgproxy:5001
+      secret:
+        - ANON_KEY
+        - SERVICE_KEY:SERVICE_ROLE_KEY
+        - AUTH_JWT_SECRET:JWT_SECRET
+        - JWT_JWKS
+        - DATABASE_URL:STORAGE_DATABASE_URL
+        - S3_PROTOCOL_ACCESS_KEY_ID
+        - S3_PROTOCOL_ACCESS_KEY_SECRET
+    volumes:
+      - supa-storage:/var/lib/storage
+
+  functions:
+    image: supabase/edge-runtime:v1.74.0
+    roles:
+      - web
+    cmd: start --main-service /home/deno/functions/main
+    options:
+      network-alias: functions
+    env:
+      clear:
+        SUPABASE_URL: http://api-gw:8000
+        SUPABASE_PUBLIC_URL: https://supa.problem.li
+        VERIFY_JWT: "false"
+      secret:
+        - JWT_SECRET
+        - SUPABASE_JWKS:JWT_JWKS
+        - SUPABASE_ANON_KEY:ANON_KEY
+        - SUPABASE_SERVICE_ROLE_KEY:SERVICE_ROLE_KEY
+        - SUPABASE_PUBLISHABLE_KEYS:FUNCTIONS_PUBLISHABLE_KEYS
+        - SUPABASE_SECRET_KEYS:FUNCTIONS_SECRET_KEYS
+        - SUPABASE_DB_URL:FUNCTIONS_DB_URL
+    files:
+      - docker/volumes/functions:/home/deno/functions
+    volumes:
+      - supa-deno-cache:/root/.cache/deno
+
+  studio:
+    image: supabase/studio:2026.08.03-sha-022b374
+    roles:
+      - web
+    options:
+      network-alias: studio
+    env:
+      clear:
+        HOSTNAME: 0.0.0.0
+        STUDIO_PG_META_URL: http://meta:8080
+        POSTGRES_PORT: "5432"
+        POSTGRES_HOST: db
+        POSTGRES_DB: postgres
+        POSTGRES_USER_READ_WRITE: postgres
+        PGRST_DB_SCHEMAS: public,graphql_public
+        PGRST_DB_MAX_ROWS: "1000"
+        PGRST_DB_EXTRA_SEARCH_PATH: public
+        DEFAULT_ORGANIZATION_NAME: problemli
+        DEFAULT_PROJECT_NAME: supa
+        SUPABASE_URL: http://api-gw:8000
+        SUPABASE_PUBLIC_URL: https://supa.problem.li
+        ENABLED_FEATURES_LOGS_ALL: "false"
+        SNIPPETS_MANAGEMENT_FOLDER: /app/snippets
+        EDGE_FUNCTIONS_MANAGEMENT_FOLDER: /app/edge-functions
+      secret:
+        - POSTGRES_PASSWORD
+        - PG_META_CRYPTO_KEY
+        - SUPABASE_ANON_KEY:ANON_KEY
+        - SUPABASE_SERVICE_KEY:SERVICE_ROLE_KEY
+        - AUTH_JWT_SECRET:JWT_SECRET
+        - SUPABASE_PUBLISHABLE_KEY
+        - SUPABASE_SECRET_KEY
+    files:
+      - docker/volumes/functions:/app/edge-functions:ro
+    directories:
+      - snippets:/app/snippets
+
+  supavisor:
+    image: supabase/supavisor:2.9.5
+    roles:
+      - web
+    cmd: "/bin/sh -c '/app/bin/migrate && /app/bin/supavisor eval \"$(cat /etc/pooler/pooler.exs)\" && /app/bin/server'"
+    options:
+      network-alias: supavisor
+      publish:
+        - "5432:5432"
+        - "6543:6543"
+      health-cmd: "curl -sSfL --head -o /dev/null http://127.0.0.1:4000/api/health || exit 1"
+      health-start-period: "60s"
+    env:
+      clear:
+        PORT: "4000"
+        POSTGRES_PORT: "5432"
+        POSTGRES_HOST: db
+        POSTGRES_DB: postgres
+        CLUSTER_POSTGRES: "true"
+        REGION: local
+        ERL_AFLAGS: -proto_dist inet_tcp
+        POOLER_TENANT_ID: supa
+        POOLER_DEFAULT_POOL_SIZE: "20"
+        POOLER_MAX_CLIENT_CONN: "100"
+        POOLER_POOL_MODE: transaction
+        DB_POOL_SIZE: "5"
+      secret:
+        - POSTGRES_PASSWORD
+        - DATABASE_URL:SUPAVISOR_DATABASE_URL
+        - SECRET_KEY_BASE
+        - VAULT_ENC_KEY
+        - API_JWT_SECRET:JWT_SECRET
+        - METRICS_JWT_SECRET:JWT_SECRET
+    files:
+      - docker/volumes/pooler/pooler.exs:/etc/pooler/pooler.exs:ro
+
+aliases:
+  apps: server exec docker exec kamal-proxy kamal-proxy list
+  ssh: app exec -i sh
