@@ -1215,6 +1215,9 @@ importers:
       shared-data:
         specifier: workspace:*
         version: link:../../packages/shared-data
+      smol-toml:
+        specifier: ^1.6.1
+        version: 1.6.1
       sonner:
         specifier: ^1.5.0
         version: 1.5.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)

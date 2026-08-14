@@ -149,6 +149,7 @@
     "recharts": "catalog:",
     "remark-gfm": "^4.0.0",
     "shared-data": "workspace:*",
+    "smol-toml": "^1.6.1",
     "sonner": "^1.5.0",
     "sql-formatter": "^15.0.0",
     "streamdown": "^1.3.0",
