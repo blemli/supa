@@ -147,7 +147,7 @@ accessories:
     cmd: postgrest
     options:
       network-alias: rest
-      health-cmd: "postgrest --ready"
+      # no health-cmd: the postgrest image has no shell, docker's string form needs one
     env:
       clear:
         PGRST_DB_SCHEMAS: public,graphql_public
@@ -203,7 +203,7 @@ accessories:
       health-cmd: "imgproxy health"
     env:
       clear:
-        IMGPROXY_BIND: :5001
+        IMGPROXY_BIND: ":5001"
         IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
         IMGPROXY_USE_ETAG: "true"
         IMGPROXY_AUTO_WEBP: "true"
@@ -217,7 +217,7 @@ accessories:
       - web
     options:
       network-alias: storage
-      health-cmd: "wget --no-verbose --tries=1 --spider http://localhost:5000/status || exit 1"
+      health-cmd: "wget --no-verbose --tries=1 --spider http://127.0.0.1:5000/status || exit 1"   # busybox wget resolves localhost to ::1, server is v4-only
       health-start-period: "30s"
     env:
       clear:
