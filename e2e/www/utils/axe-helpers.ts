@@ -101,7 +101,10 @@ export async function scanGlobalElements(
     excludeRules: GLOBAL_ELEMENTS_EXCLUDED_RULES,
   })
 
-  const extra = await scan(page, { rules: GLOBAL_ELEMENTS_EXTRA_REPORTED_RULES, exclude })
+  // Heading order and landmark uniqueness are properties of the whole document,
+  // so this pass keeps the article in. Scoping it would hide the event
+  // template's nested `<main>`, which is the article wrapper itself.
+  const extra = await scan(page, { rules: GLOBAL_ELEMENTS_EXTRA_REPORTED_RULES })
   const byRule = new Map(
     [...result.violations, ...extra].map((violation) => [violation.id, violation])
   )

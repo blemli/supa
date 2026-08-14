@@ -215,7 +215,11 @@ suite that checks www contrast at all.
 
 `GLOBAL_ELEMENTS_EXTRA_REPORTED_RULES` holds `heading-order` and
 `landmark-unique`. Both are axe best-practice rules rather than WCAG, so they
-need a pass of their own, and both are reported and never blocking:
+need a pass of their own. That pass keeps the article in, because heading order
+and landmark uniqueness are properties of the whole document. Scoping it would
+hide the event template's nested `<main>`, which is the article wrapper itself.
+
+Both rules are reported and never blocking:
 
 - The footer's `h6` headings sit under a screen-reader-only `h2`, which is a
   `heading-order` skip on every www page. Enforcing it would fail nearly every
