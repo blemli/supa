@@ -5,7 +5,7 @@ site content pages.
 
 Use this suite when you change blog posts, events, customer stories, or
 alternatives pages under `apps/www`. It loads each in-scope page, checks that it
-returns a successful status, and scans it for a single accessibility rule.
+returns a successful status, and scans it for accessibility violations.
 
 This page covers:
 
@@ -15,6 +15,8 @@ This page covers:
 - [Override which pages run](#override-which-pages-run) — when the default git
   scope is wrong
 - [What the suite covers](#what-the-suite-covers) — in-scope paths and limits
+- [Accessibility scans](#accessibility-scans) — WCAG coverage and warn mode
+- [Global element scans](#global-element-scans) — nav, footer, and page scaffolding
 - [Debug failures](#debug-failures) — reports and traces
 - [How CI uses this suite](#how-ci-uses-this-suite) — pull request behavior
 
@@ -142,100 +144,51 @@ sorted order are tested. To test beyond the cap, use `pnpm e2e:www:all` or set
 
 ## Accessibility scans
 
-The `@a11y`-tagged test scans each in-scope page for WCAG 2.1 A/AA violations using
-`@axe-core/playwright`, limited to the article wrapper for that template.
+The `@a11y`-tagged test scans each in-scope page for WCAG 2.1 A/AA violations, limited
+to the article wrapper for that template.
 
 ```bash
 PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:www:a11y
 ```
 
-Which pages get scanned comes from your branch, but the content comes from
-whatever you point `PLAYWRIGHT_BASE_URL` at. Production won't have your edits and
-will 404 on a page you just added, so use your pull request's preview to scan your
-own content.
+**Warn mode.** Only `ENFORCED_RULES` in `utils/axe-helpers.ts` fails the build.
+Everything else lands as a warning annotation and in the run's `axe-results.json`
+attachment. Set `A11Y_ENFORCE_ALL=1` to make every finding blocking locally.
 
-Findings are reported, not enforced. Only `ENFORCED_RULES` in `utils/axe-helpers.ts`
-fails the build; everything else lands as a warning annotation and in the
-`axe-results.json` attachment on the run. Set `A11Y_ENFORCE_ALL=1` to make every
-finding blocking locally.
+**Scan your own preview.** The page list comes from your branch, but the content comes
+from whatever `PLAYWRIGHT_BASE_URL` points at. Production 404s on a page you just
+added.
 
-`wwwArticleSelectorForPagePath` in `utils/www-selectors.ts` maps each route prefix
-to its wrapper. The four content templates each wrap their body differently, so a
-route outside those four throws rather than guessing.
+**Configuration:** article selectors per template live in `utils/www-selectors.ts`,
+rule lists in `utils/axe-helpers.ts`.
 
-`page-has-heading-one` runs against `<main id="main">` rather than the article.
-Blog and event templates render their `<h1>` outside the article wrapper, so an
-article-scoped scan would report a false violation on every one of those pages.
+## Global element scans
 
-`EXCLUDED_RULES` lists the rules the scan skips. `color-contrast` is most of the
-scan time and finds nothing inside an article, since www contrast comes from shared
-tokens and chrome. The rest target `<html>`, `<head>`, and `<body>`, which an
-article-scoped scan can't reach.
-
-Cross-origin frames are skipped, so a third-party embed isn't reported as ours.
-
-Event articles are short enough that a scan can fall under the 20-element floor and
-warn that a clean result proves nothing. That reflects the template, not a broken
-run.
-
-Not covered by the page scan: shared chrome, listing pages, and most of WCAG.
-Keyboard navigation, focus management, and screen reader behavior need manual
-testing.
-
-### Scan global elements
-
-The page scan stops at the article wrapper. The global-element suite covers the
-other half — the nav, the footer, and the rest of the page scaffolding:
+Global elements are everything outside the article: the nav, the footer, and the rest
+of the page scaffolding.
 
 ```bash
 PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:www:global-elements
 ```
 
-It scans a fixed list of eight pages, one per layout, at both a 1280x800 desktop
-and a 390x844 mobile viewport, plus one pass with the mobile menu open. The list
-lives in `utils/www-global-elements.ts` and resolves nothing from your git diff,
-so the same chrome gets scanned no matter what you changed.
+**Why this is a separate suite:**
 
-Each scan covers the document with that page's article wrapper excluded. Listing
-pages and `/` render no article, so they declare `articleSelector: null` rather
-than excluding a selector that matches nothing — excluding nothing would
-silently widen the scan back to the whole page.
+- **Attribution.** Global markup renders on every page. Scanning it alongside changed
+  content would report the footer's heading skip on a pull request that only edited an
+  `.mdx` file. That skip is on nearly every www page.
+- **Scope.** These elements don't vary by page, so the scope is a fixed list of one page
+  per layout rather than the changed-files scope the page scan uses. Each element is
+  scanned once instead of once per changed page.
 
-Chrome ships on every page, so the enforced set is stricter here than for
-content. `GLOBAL_ELEMENTS_ENFORCED_RULES` holds the WCAG 2.1 A/AA rules that
-apply to every page in the list and pass today; a failure there is a regression
-in markup every visitor sees. Rules that apply to only some pages, and rules
-with findings today, stay reported.
+The two suites are separate Playwright projects, so a content pull request never runs
+this one. Its report lands in `playwright-report-global-elements/`.
 
-This inverts the page scan's exclusions. `document-title`, `html-has-lang`,
-`html-lang-valid`, and `meta-viewport` are unreachable from an article-scoped
-scan and become enforceable here. `color-contrast` is reachable too, and it is
-about three quarters of axe's runtime — worth paying, because this is the only
-suite that checks www contrast at all.
+**Point it at your preview, not production,** when you change global elements. The
+`data-testid` hooks it looks for only exist on branches that carry them.
 
-`GLOBAL_ELEMENTS_EXTRA_REPORTED_RULES` holds `heading-order` and
-`landmark-unique`. Both are axe best-practice rules rather than WCAG, so they
-need a pass of their own. That pass keeps the article in, because heading order
-and landmark uniqueness are properties of the whole document. Scoping it would
-hide the event template's nested `<main>`, which is the article wrapper itself.
-
-Both rules are reported and never blocking:
-
-- The footer's `h6` headings sit under a screen-reader-only `h2`, which is a
-  `heading-order` skip on every www page. Enforcing it would fail nearly every
-  content pull request.
-- The event template nests a `<main>` inside the layout's `<main id="main">`,
-  which `landmark-unique` reports on every event page.
-
-`dedupeViolations` collapses repeats, so a finding in shared chrome reports once
-per worker instead of once per page per viewport.
-
-Element presence is asserted softly, so a missing nav still reports its scan
-instead of hiding it behind a hard failure.
-
-Point this suite at your pull request's preview, not production, whenever you
-change chrome — the `data-testid` hooks it looks for only exist on branches that
-carry them.
+**Configuration:** the page list, the element list, and which elements to expect at
+each viewport live in `utils/www-global-elements.ts`. Rule lists are in
+`utils/axe-helpers.ts`.
 
 ## Debug failures
 
