@@ -138,44 +138,23 @@ sorted order are tested. To test beyond the cap, use `pnpm e2e:www:all` or set
 
 ## Accessibility scans
 
-The `@a11y`-tagged test scans each in-scope page for WCAG 2.1 A/AA violations using
-`@axe-core/playwright`, limited to the article wrapper for that template.
+The `@a11y`-tagged test scans each in-scope page for WCAG 2.1 A/AA violations, limited
+to the article wrapper for that template.
 
 ```bash
 PLAYWRIGHT_BASE_URL=https://supabase.com pnpm e2e:www:a11y
 ```
 
-Which pages get scanned comes from your branch, but the content comes from
-whatever you point `PLAYWRIGHT_BASE_URL` at. Production won't have your edits and
-will 404 on a page you just added, so use your pull request's preview to scan your
-own content.
+**Warn mode.** Only `ENFORCED_RULES` in `utils/axe-helpers.ts` fails the build.
+Everything else lands as a warning annotation and in the run's `axe-results.json`
+attachment. Set `A11Y_ENFORCE_ALL=1` to make every finding blocking locally.
 
-Findings are reported, not enforced. Only `ENFORCED_RULES` in `utils/axe-helpers.ts`
-fails the build; everything else lands as a warning annotation and in the
-`axe-results.json` attachment on the run. Set `A11Y_ENFORCE_ALL=1` to make every
-finding blocking locally.
+**Scan your own preview.** The page list comes from your branch, but the content comes
+from whatever `PLAYWRIGHT_BASE_URL` points at. Production 404s on a page you just
+added.
 
-`wwwArticleSelectorForPagePath` in `utils/www-selectors.ts` maps each route prefix
-to its wrapper. The four content templates each wrap their body differently, so a
-route outside those four throws rather than guessing.
-
-`page-has-heading-one` runs against `<main id="main">` rather than the article.
-Blog and event templates render their `<h1>` outside the article wrapper, so an
-article-scoped scan would report a false violation on every one of those pages.
-
-`EXCLUDED_RULES` lists the rules the scan skips. `color-contrast` is most of the
-scan time and finds nothing inside an article, since www contrast comes from shared
-tokens and chrome. The rest target `<html>`, `<head>`, and `<body>`, which an
-article-scoped scan can't reach.
-
-Cross-origin frames are skipped, so a third-party embed isn't reported as ours.
-
-Event articles are short enough that a scan can fall under the 20-element floor and
-warn that a clean result proves nothing. That reflects the template, not a broken
-run.
-
-Not covered: shared chrome, listing pages, and most of WCAG. Keyboard navigation,
-focus management, and screen reader behavior need manual testing.
+**Configuration:** article selectors per template live in `utils/www-selectors.ts`,
+rule lists in `utils/axe-helpers.ts`.
 
 ## Debug failures
 
