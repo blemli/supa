@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 nginx-l
 COPY docker/volumes/api/envoy/envoy.yaml docker/volumes/api/envoy/cds.yaml docker/volumes/api/envoy/lds.template.yaml /etc/envoy/
 COPY docker/volumes/api/envoy/docker-entrypoint.sh /docker-entrypoint.sh
 COPY dritte/ /dritte/
+COPY apps/www/public/images/supabase-logo-icon.svg /dritte/favicon.svg
 ENV DRITTE_APP=supa
 ENTRYPOINT []
 CMD ["python3", "/dritte/dritte.py", "--", "/bin/sh", "/dritte/start.sh"]

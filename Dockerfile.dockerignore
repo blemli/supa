@@ -3,3 +3,4 @@
 *
 !docker/volumes/api/envoy
 !dritte
+!apps/www/public/images/supabase-logo-icon.svg
