@@ -264,7 +264,9 @@ accessories:
         - SUPABASE_SECRET_KEYS:FUNCTIONS_SECRET_KEYS
         - SUPABASE_DB_URL:FUNCTIONS_DB_URL
     files:
-      - docker/volumes/functions:/home/deno/functions
+      - docker/volumes/functions/main/index.ts:/home/deno/functions/main/index.ts:ro
+      - docker/volumes/functions/hello/index.ts:/home/deno/functions/hello/index.ts:ro
+      - docker/volumes/functions/deno.jsonc:/home/deno/functions/deno.jsonc:ro
     volumes:
       - supa-deno-cache:/root/.cache/deno
 
@@ -301,7 +303,9 @@ accessories:
         - SUPABASE_PUBLISHABLE_KEY
         - SUPABASE_SECRET_KEY
     files:
-      - docker/volumes/functions:/app/edge-functions:ro
+      - docker/volumes/functions/main/index.ts:/app/edge-functions/main/index.ts:ro
+      - docker/volumes/functions/hello/index.ts:/app/edge-functions/hello/index.ts:ro
+      - docker/volumes/functions/deno.jsonc:/app/edge-functions/deno.jsonc:ro
     directories:
       - snippets:/app/snippets
 

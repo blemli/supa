@@ -34,4 +34,4 @@ Everything upstream is untouched; ours is only:
 
 The compose sidecars run as kamal accessories (db, meta, auth, rest, realtime, imgproxy, storage, functions, studio, supavisor) with `network-alias` recreating the compose hostnames. Logflare/vector analytics are deliberately absent (upstream default).
 
-Edge functions live in `docker/volumes/functions/` — add a `<name>/index.ts` there, then `kamal accessory reboot functions studio`.
+Edge functions live in `docker/volumes/functions/` — add a `<name>/index.ts` there, list it under the `functions` and `studio` accessory `files:` in `config/deploy.yml` (kamal cannot mount directories), then `kamal accessory reboot functions studio`.
